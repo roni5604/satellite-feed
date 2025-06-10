@@ -7,6 +7,8 @@ import math
 import requests
 from skyfield.api import load, EarthSatellite, wgs84
 from flask import Flask, Response
+import random
+
 
 app = Flask(__name__)
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
@@ -115,6 +117,56 @@ def precompute_targets(window_minutes=PREDICTION_DURATION_MIN):
 
     print(f"[Tracker] Pre-computed {len(target_points)} target points "
           f"({window_minutes} min, {TARGET_INTERVAL_S}s spacing).")
+
+
+def precompute_shifted_targets(window_minutes=PREDICTION_DURATION_MIN,
+                       max_shift_km=0.0,  # X km: max deviation
+                       shift_prob=0.0):   # y: chance [0.0–1.0]
+    """
+    Precompute ground-projected targets.
+    Optionally shift some laterally (left/right) up to `max_shift_km` with probability `shift_prob`.
+    """
+    global target_points, tle_line1, tle_line2
+    ts  = load.timescale()
+    sat = EarthSatellite(tle_line1, tle_line2, "ISS", ts)
+
+    now   = ts.now()
+    steps = int((window_minutes * 60) / TARGET_INTERVAL_S)
+    target_points.clear()
+
+    prev_lat = prev_lon = None  # used to approximate satellite bearing
+
+    for i in range(steps):
+        t = now + (i * TARGET_INTERVAL_S) / 86400.0
+        geo = sat.at(t)
+        lat, lon = wgs84.latlon_of(geo)
+        lat = float(lat.degrees)
+        lon = float(lon.degrees)
+
+        # Determine bearing from previous point (if available)
+        if prev_lat is not None and prev_lon is not None:
+            bearing = bearing_deg(prev_lat, prev_lon, lat, lon)
+
+            if random.random() < shift_prob and max_shift_km > 0.0:
+                # Choose left (−90°) or right (+90°)
+                direction = random.choice([-90, 90])
+                shift_angle = math.radians((bearing + direction) % 360)
+
+                # Shift by up to X km
+                shift_km = random.uniform(0, max_shift_km)
+                R = 6371.0  # Earth radius in km
+                d_lat = (shift_km / R) * math.cos(shift_angle)
+                d_lon = (shift_km / R) * math.sin(shift_angle) / math.cos(math.radians(lat))
+
+                lat += math.degrees(d_lat)
+                lon += math.degrees(d_lon)
+
+        target_points.append((lat, lon))
+        prev_lat, prev_lon = lat, lon
+
+    print(f"[Tracker] Pre-computed {len(target_points)} target points "
+          f"({window_minutes} min, {TARGET_INTERVAL_S}s spacing).")
+
 
 
 def satellite_updater():
@@ -398,7 +450,8 @@ if __name__ == "__main__":
     tle_line1, tle_line2 = fetch_iss_tle()
 
     # 2)  Fill `target_points` for the next 90 min (or whatever you chose)
-    precompute_targets()
+    # precompute_targets()
+    precompute_shifted_targets(max_shift_km=100.0, shift_prob=0.3)  # Example with shifting
 
     # 3)  Normal start-up
     signal.signal(signal.SIGINT, shutdown_handler)
