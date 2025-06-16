@@ -181,8 +181,13 @@ def precompute_shifted_targets(window_minutes=PREDICTION_DURATION_MIN,
                 d_lat = (shift_km / R) * math.cos(shift_angle)
                 d_lon = (shift_km / R) * math.sin(shift_angle) / math.cos(math.radians(lat))
 
-                lat += math.degrees(d_lat)
-                lon += math.degrees(d_lon)
+                if random.random() < 0.5:
+                    # Shift left
+                    lat -= math.degrees(d_lat)
+                    lon -= math.degrees(d_lon)
+                else:
+                    lat += math.degrees(d_lat)
+                    lon += math.degrees(d_lon)
 
         target_points.append((lat, lon))
         prev_lat, prev_lon = lat, lon
@@ -495,7 +500,7 @@ if __name__ == "__main__":
     tle_line1, tle_line2 = fetch_iss_tle()
 
     # Fill `target_points` for the next 90 min (or whatever you chose)
-    precompute_shifted_targets(max_shift_km=100.0, shift_prob=0.7)  # Example with shifting
+    precompute_shifted_targets(max_shift_km=200.0, shift_prob=0.9)  # Example with shifting
 
     signal.signal(signal.SIGINT, shutdown_handler)
     threading.Thread(target=satellite_updater, daemon=True).start()

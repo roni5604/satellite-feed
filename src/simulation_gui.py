@@ -58,16 +58,16 @@ class SimulationGUI:
             focus_mod, heading_rate, tilt_rate = False, 0.0, 0.0
 
         # Update heading
-        self.heading_label.config(text=f"Heading Rate: {heading_rate:.2f}")
+        self.heading_label.config(text=f"Heading Rate (deg/s): {heading_rate:.2f}")
         self.heading_bar["value"] = min(heading_rate, 100.0)
 
         # Update tilt
-        self.tilt_label.config(text=f"Tilt Rate: {tilt_rate:.2f}")
+        self.tilt_label.config(text=f"Tilt Rate (deg/s): {tilt_rate:.2f}")
         self.tilt_bar["value"] = min(tilt_rate, 100.0)
 
         # Energy
         energy_use = self.calculate_energy_use(heading_rate, tilt_rate)
-        self.energy_label.config(text=f"Energy Use: {energy_use:.2f}")
+        self.energy_label.config(text=f"Energy Use (W): {energy_use:.2f}")
         self.energy_bar["value"] = min(energy_use, 100.0)
 
         self.root.after(100, self.update_gui)
