@@ -1,0 +1,83 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyInstaller
+*.spec
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# PEP 582; used by python/pip
+__pypackages__/
+
+# Environments
+.env
+.env.*
+.venv
+
+# pyproject-build
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ===== Editors & OS =====
+# VSCode
+.vscode/
+# PyCharm
+.idea/
+*.iml
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# SQLite
+*.sqlite3
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# ===== Custom project files to ignore =====
+# Ignore sensitive config or output directories if any:
+# config.yaml
+# output/
