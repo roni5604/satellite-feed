@@ -8,6 +8,16 @@ import requests
 from skyfield.api import load, EarthSatellite, wgs84
 from flask import Flask, Response
 import random
+import time
+
+start_time = time.time()
+orbit_angular_speeds = []
+focus_angular_speeds = []
+
+prev_heading = None
+prev_tilt = None
+prev_time = None
+
 
 app = Flask(__name__)
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
@@ -191,13 +201,11 @@ def satellite_updater():
         time.sleep(UPDATE_INTERVAL_S)
 
 
-def calculate_3d_distance_km(sat_lat, sat_lon, tgt_lat, tgt_lon):
+def calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, tgt_alt_km):
     """
-    Calculate 3D distance (km) between satellite (at alt=500km) and ground target (alt=0).
+    Calculate 3D distance (km) between satellite and ground target.
     """
     R_earth = 6371.0
-    sat_alt_km = 500
-    tgt_alt_km = 0
 
     def to_cartesian(lat, lon, alt, R_base):
         radius = R_base + alt
@@ -213,6 +221,83 @@ def calculate_3d_distance_km(sat_lat, sat_lon, tgt_lat, tgt_lon):
 
     distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
     return distance
+
+@app.route("/orbit.kml")
+def stream_kml_orbit_only():
+    """
+    * Simple orbit tracking: Earth-centered view
+    * KML includes ISS path as white LineString
+    * LookAt follows satellite, looking straight down
+    * Computes and prints heading and tilt rate (deg/s)
+    """
+    if len(positions_history) < 2:
+        return Response("", status=204)
+
+    # Satellite current position
+    sat_lat, sat_lon, sat_alt_km = positions_history[-1]
+    alt_m = sat_alt_km * 1000
+
+    global prev_time, prev_lat, prev_lon
+
+    # Measure angular changes for logging
+    now = time.time()
+    if prev_time is not None:
+        delta_t = now - prev_time
+        delta_heading = abs(sat_lon - prev_lon)
+        delta_tilt = abs(sat_lat - prev_lat)
+
+        heading_rate = delta_heading / delta_t
+        tilt_rate = delta_tilt / delta_t
+
+        print(f"[ΔAngles] ORBIT mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
+
+    prev_time = now
+    prev_lat = sat_lat
+    prev_lon = sat_lon
+
+    # LookAt tag (camera looks straight down on satellite)
+    lookat = f"""
+    <LookAt>
+      <longitude>{sat_lon:.6f}</longitude>
+      <latitude>{sat_lat:.6f}</latitude>
+      <altitude>0</altitude>
+      <heading>0</heading>
+      <tilt>0</tilt>
+      <range>{alt_m:.1f}</range>
+      <altitudeMode>absolute</altitudeMode>
+    </LookAt>"""
+
+    coords = " ".join(f"{lo:.6f},{la:.6f},{al * 1000:.1f}"
+                      for la, lo, al in positions_history)
+
+    path_style = """
+    <Style id="pathStyle">
+      <LineStyle>
+        <color>ffffffff</color>
+        <width>2</width>
+      </LineStyle>
+    </Style>"""
+
+    kml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>ISS Orbit Path</name>
+    {lookat}
+    {path_style}
+    <Placemark>
+      <name>ISS Path</name>
+      <styleUrl>#pathStyle</styleUrl>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+          {coords}
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    return Response(kml, mimetype="application/vnd.google-earth-kml+xml")
 
 
 @app.route("/live.kml")
@@ -239,19 +324,44 @@ def stream_kml():
     )
     # Print nearest-target info
     dist_km = haversine_km(sat_lat, sat_lon, tgt_lat, tgt_lon)
-    print(f"[Tracker] Closest target: lat={tgt_lat:.6f}, lon={tgt_lon:.6f}, Distance: {dist_km:.1f} km")
+    print(f"[Tracker] Closest target: lat={tgt_lat:.6f}, lon={tgt_lon:.6f}, Air Distance: {dist_km:.1f} km")
 
-    # 3)  Compute 3D range + 3000m padding
-    real_dist = calculate_3d_distance_km(sat_lat, sat_lon, tgt_lat, tgt_lon)
-    lookat_range_m = real_dist * 1000 + 3000
+    # 3)  Compute 3D range - real distance from satelitte to target
+    real_dist = calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, 0)
+    lookat_range_m = real_dist  * 1000
 
     # 4)  Geometry from ISS → target
     heading = bearing_deg(sat_lat, sat_lon, tgt_lat, tgt_lon)
     elev_deg = math.degrees(math.atan2(sat_alt_km, dist_km)) if dist_km else 90.0
     tilt = max(0.0, min(90.0, 90.0 - elev_deg))
 
+    # 5) Compute angular speed and store it
+    lat1, lon1, _ = positions_history[-2] if len(positions_history) >= 2 else (sat_lat, sat_lon, sat_alt_km)
+    angle = haversine_km(lat1, lon1, sat_lat, sat_lon) / 6371.0  # radians
+    angular_speed_deg = math.degrees(angle) / UPDATE_INTERVAL_S
+    focus_angular_speeds.append(angular_speed_deg)
+
+    global prev_heading, prev_tilt, prev_time
+
+    now = time.time()
+
+    if prev_heading is not None and prev_tilt is not None and prev_time is not None:
+      delta_t = now - prev_time
+      delta_heading = abs(heading - prev_heading)
+      delta_tilt = abs(tilt - prev_tilt)
+
+      heading_rate = delta_heading / delta_t
+      tilt_rate = delta_tilt / delta_t
+
+      print(f"[ΔAngles] FOCUS mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
+
+    prev_heading = heading
+    prev_tilt = tilt
+    prev_time = now
+
+
     # ------------------------------------------------------------------
-    # 5)  Assemble KML: LookAt + Styles
+    # 6)  Assemble KML: LookAt + Styles
     lookat = f"""
     <LookAt>
       <longitude>{tgt_lon:.6f}</longitude>
@@ -327,6 +437,14 @@ def stream_kml():
     return Response(kml, mimetype="application/vnd.google-earth-kml+xml")
 
 
+@app.route("/dynamic.kml")
+def dynamic_kml():
+    if time.time() - start_time < 60:
+        return stream_kml_orbit_only()
+    else:
+        return stream_kml()
+
+
 def shutdown_handler(sig, frame):
     """
     Graceful shutdown handler (e.g., on Ctrl+C).
@@ -346,6 +464,8 @@ if __name__ == "__main__":
     threading.Thread(target=satellite_updater, daemon=True).start()
     print("[Tracker] Flask server on port 5003 …")
     app.run(host="0.0.0.0", port=5003)
+
+    
 
 """
     ToDo:
