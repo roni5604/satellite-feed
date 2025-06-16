@@ -7,6 +7,7 @@ import math
 import requests
 from skyfield.api import load, EarthSatellite, wgs84
 from flask import Flask, Response
+from flask import request, jsonify
 import random
 import time
 from shared_state import state
@@ -234,6 +235,26 @@ def calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, tgt
 
     distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
     return distance
+
+@app.route("/state")
+def get_state():
+    focus, heading, tilt = state.get_values()
+    return jsonify({
+        "focus_mod": focus,
+        "heading_rate": heading,
+        "tilt_rate": tilt
+    })
+
+@app.route("/set_state", methods=["POST"])
+def set_state():
+    data = request.json
+    state.set_values(
+        focus_mod=data.get("focus_mod"),
+        heading_rate=data.get("heading_rate"),
+        tilt_rate=data.get("tilt_rate")
+    )
+    return jsonify({"status": "ok"})
+
 
 @app.route("/orbit.kml")
 def stream_kml_orbit_only():
