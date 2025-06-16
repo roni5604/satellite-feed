@@ -9,6 +9,7 @@ from skyfield.api import load, EarthSatellite, wgs84
 from flask import Flask, Response
 import random
 import time
+from shared_state import state
 
 start_time = time.time()
 orbit_angular_speeds = []
@@ -18,6 +19,11 @@ prev_heading = None
 prev_tilt = None
 prev_time = None
 
+# Global variables for GUI
+# focus_mod = False
+# heading_rate = 0.0
+# tilt_rate = 0.0
+# energy_use = 0.0
 
 app = Flask(__name__)
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
@@ -44,6 +50,13 @@ target_points: list[tuple[float, float]] = []  # (lat,lon) ground pts
 # TLE lines for the ISS (populated once at startup)
 tle_line1 = tle_line2 = None
 
+def update_energy_use():
+    """
+    Updates global energy_use based on current angular speeds.
+    A simple energy model: energy ∝ heading_rate² + tilt_rate²
+    """
+    global energy_use, heading_rate, tilt_rate
+    # energy_use = .................................
 
 def fetch_iss_tle():
     """
@@ -237,6 +250,7 @@ def stream_kml_orbit_only():
     sat_lat, sat_lon, sat_alt_km = positions_history[-1]
     alt_m = sat_alt_km * 1000
 
+    
     global prev_time, prev_lat, prev_lon
 
     # Measure angular changes for logging
@@ -248,6 +262,8 @@ def stream_kml_orbit_only():
 
         heading_rate = delta_heading / delta_t
         tilt_rate = delta_tilt / delta_t
+
+        state.set_values(heading_rate=heading_rate, tilt_rate=tilt_rate)
 
         print(f"[ΔAngles] ORBIT mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
 
@@ -352,7 +368,7 @@ def stream_kml():
 
       heading_rate = delta_heading / delta_t
       tilt_rate = delta_tilt / delta_t
-
+      state.set_values(heading_rate=heading_rate, tilt_rate=tilt_rate)
       print(f"[ΔAngles] FOCUS mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
 
     prev_heading = heading
@@ -439,10 +455,10 @@ def stream_kml():
 
 @app.route("/dynamic.kml")
 def dynamic_kml():
-    if time.time() - start_time < 60:
-        return stream_kml_orbit_only()
-    else:
+    if state.get_values()[0]: # focus_mod is True
         return stream_kml()
+    else:
+        return stream_kml_orbit_only()
 
 
 def shutdown_handler(sig, frame):
@@ -458,7 +474,7 @@ if __name__ == "__main__":
     tle_line1, tle_line2 = fetch_iss_tle()
 
     # Fill `target_points` for the next 90 min (or whatever you chose)
-    precompute_shifted_targets(max_shift_km=100.0, shift_prob=0.3)  # Example with shifting
+    precompute_shifted_targets(max_shift_km=100.0, shift_prob=0.7)  # Example with shifting
 
     signal.signal(signal.SIGINT, shutdown_handler)
     threading.Thread(target=satellite_updater, daemon=True).start()
@@ -476,5 +492,4 @@ if __name__ == "__main__":
     - add info gui with:
      speed, angle, camera angle, distance to the closest target and the secound closest (with directions)
 
-    - add laser beams from the sat location to the distance 
 """
