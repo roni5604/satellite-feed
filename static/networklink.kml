@@ -9,7 +9,7 @@
       <refreshMode>onInterval</refreshMode>
       <refreshInterval>5</refreshInterval>
       <Link>
-        <href>http://192.168.9.139:5003/dynamic.kml</href>
+        <href>http://192.168.68.129:5003/dynamic.kml</href>
         <refreshMode>onInterval</refreshMode>
         <refreshInterval>5</refreshInterval>
       </Link>
