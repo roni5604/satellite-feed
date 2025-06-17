@@ -35,16 +35,24 @@ class SimulationGUI:
         self.update_gui()
 
     def toggle_focus(self):
-        current_focus, _, _ = state.get_values()
+        current_focus, _, _, _ = state.get_values()
         new_focus = not current_focus
         try:
             requests.post("http://localhost:5003/set_state", json={"focus_mod": new_focus})
         except Exception as e:
             print("Failed to update focus_mod on server:", e)
 
+    def update_energy_use(self):
+        """Compute instantaneous power draw and store it in shared_state."""
+        focus, h_rate, t_rate, _ = state.get_values()
 
-    def calculate_energy_use(self, heading, tilt):
-        return heading * 0.4 + tilt * 0.6 ######################### TODO: Implement energy consumption model
+        P_idle = 5.0                      # idle power consumption in watts
+        k_h, k_t = 0.03, 0.04             # the power coefficients for heading and tilt rates
+        P_focus = 10.0 if focus else 0.0  # when focus mode is active the satellite consumes more power for calculations
+
+        energy = P_idle + k_h * h_rate ** 2 + k_t * t_rate ** 2 + P_focus
+        state.set_values(energy_use=energy)
+        return energy
 
     def update_gui(self):
         try:
@@ -59,14 +67,14 @@ class SimulationGUI:
 
         # Update heading
         self.heading_label.config(text=f"Heading Rate (deg/s): {heading_rate:.2f}")
-        self.heading_bar["value"] = min(heading_rate, 100.0)
+        self.heading_bar["value"] = min(heading_rate, 80.0)
 
         # Update tilt
         self.tilt_label.config(text=f"Tilt Rate (deg/s): {tilt_rate:.2f}")
-        self.tilt_bar["value"] = min(tilt_rate, 100.0)
+        self.tilt_bar["value"] = min(tilt_rate, 80.0)
 
         # Energy
-        energy_use = self.calculate_energy_use(heading_rate, tilt_rate)
+        energy_use = self.update_energy_use()
         self.energy_label.config(text=f"Energy Use (W): {energy_use:.2f}")
         self.energy_bar["value"] = min(energy_use, 100.0)
 
