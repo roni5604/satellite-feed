@@ -6,6 +6,7 @@ import signal
 import sys
 import math
 import requests
+from PySide6.QtWidgets import QApplication
 from skyfield.api import load, EarthSatellite, wgs84
 from flask import Flask, Response, send_file
 import random
@@ -14,6 +15,7 @@ from flask import request, jsonify
 from shared_state import state
 import tkinter as tk
 from simulation_gui import SimulationGUI
+from satellite_gui import SatelliteViewer
 
 start_time = time.time()
 orbit_angular_speeds = []
@@ -140,7 +142,7 @@ def precompute_targets(window_minutes=PREDICTION_DURATION_MIN):
 
 def precompute_shifted_targets(window_minutes=PREDICTION_DURATION_MIN,
                                max_shift_km=0.0,  # X km: max deviation
-                               shift_prob=0.0):   # y: chance [0.0–1.0]
+                               shift_prob=0.0):  # y: chance [0.0–1.0]
     """
     Precompute ground-projected targets.
     Optionally shift some laterally (left/right) up to `max_shift_km` with probability `shift_prob`.
@@ -234,7 +236,7 @@ def calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, tgt
     x1, y1, z1 = to_cartesian(sat_lat, sat_lon, sat_alt_km, R_earth)
     x2, y2, z2 = to_cartesian(tgt_lat, tgt_lon, tgt_alt_km, R_earth)
 
-    distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
+    distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
     return distance
 
 
@@ -273,7 +275,6 @@ def stream_kml_orbit_only():
     sat_lat, sat_lon, sat_alt_km = positions_history[-1]
     alt_m = sat_alt_km * 1000
 
-    
     global prev_time, prev_lat, prev_lon
 
     # Measure angular changes for logging
@@ -286,7 +287,10 @@ def stream_kml_orbit_only():
         heading_rate = delta_heading / delta_t
         tilt_rate = delta_tilt / delta_t
 
-        state.set_values(heading_rate=heading_rate, tilt_rate=tilt_rate)
+        state.set_values(heading=0.0,
+                         tilt=0.0,
+                         heading_rate=heading_rate,
+                         tilt_rate=tilt_rate)
 
         print(f"[ΔAngles] ORBIT mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
 
@@ -367,7 +371,7 @@ def stream_kml():
 
     # 3)  Compute 3D range - real distance from satelitte to target
     real_dist = calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, 0)
-    lookat_range_m = real_dist  * 1000
+    lookat_range_m = real_dist * 1000
 
     # 4)  Geometry from ISS → target
     heading = bearing_deg(sat_lat, sat_lon, tgt_lat, tgt_lon)
@@ -385,19 +389,21 @@ def stream_kml():
     now = time.time()
 
     if prev_heading is not None and prev_tilt is not None and prev_time is not None:
-      delta_t = now - prev_time
-      delta_heading = abs(heading - prev_heading)
-      delta_tilt = abs(tilt - prev_tilt)
+        delta_t = now - prev_time
+        delta_heading = abs(heading - prev_heading)
+        delta_tilt = abs(tilt - prev_tilt)
 
-      heading_rate = delta_heading / delta_t
-      tilt_rate = delta_tilt / delta_t
-      state.set_values(heading_rate=heading_rate, tilt_rate=tilt_rate)
-      print(f"[ΔAngles] FOCUS mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
+        heading_rate = delta_heading / delta_t
+        tilt_rate = delta_tilt / delta_t
+        state.set_values(heading=heading,
+                         tilt=tilt,
+                         heading_rate=heading_rate,
+                         tilt_rate=tilt_rate)
+        print(f"[ΔAngles] FOCUS mode – Heading rate: {heading_rate:.4f} deg/s, Tilt rate: {tilt_rate:.4f} deg/s")
 
     prev_heading = heading
     prev_tilt = tilt
     prev_time = now
-
 
     # ------------------------------------------------------------------
     # 6)  Assemble KML: LookAt + Styles
@@ -478,16 +484,28 @@ def stream_kml():
 
 @app.route("/dynamic.kml")
 def dynamic_kml():
-    if state.get_values()[0]: # focus_mod is True
+    if state.get_values()[0]:  # focus_mod is True
         return stream_kml()
     else:
         return stream_kml_orbit_only()
+
 
 def start_simulation_gui():
     root = tk.Tk()
     gui = SimulationGUI(root)
     root.mainloop()
 
+# def start_satellite_gui():
+#     """
+#     Entry-point that can be imported and called
+#     from another script (`app.exec()` blocks).
+#     """
+#     app = QApplication.instance() or QApplication(sys.argv)
+#     win = SatelliteViewer()
+#     win.resize(1100, 600)
+#     win.show()
+#     sys.exit(app.exec())
+#
 
 def shutdown_handler(sig, frame):
     """
@@ -495,6 +513,20 @@ def shutdown_handler(sig, frame):
     """
     print("\n[Tracker] Exiting gracefully. Goodbye! 👋")
     sys.exit(0)
+
+@app.route("/angles")
+def angles():
+   """
+   Returns the last computed heading & tilt as JSON,
+   so that satellite_gui.py can poll them.
+   """
+   # state.get_angles() should return (heading, tilt)
+   h, t = state.get_angles()
+   print(f"[Tracker] Angles: Heading={h:.2f}°, Tilt={t:.2f}°")
+   return jsonify({
+       "heading": round(h, 2),
+       "tilt":    round(t, 2),
+   })
 
 
 if __name__ == "__main__":
@@ -512,12 +544,10 @@ if __name__ == "__main__":
     print("[Tracker] Flask server on port 5003 …")
     app.run(host="0.0.0.0", port=5003)
 
-
-
 """
     ToDo:
     - add more camera targets                                       V
-    - make the target shift off course by up to X kilometers
+    - make the target shift off course by up to X kilometers        V
     - make the camara look at the closest target                    V
 
     - add info gui with:
