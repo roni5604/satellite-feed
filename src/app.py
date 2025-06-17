@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 import logging
@@ -6,11 +7,12 @@ import sys
 import math
 import requests
 from skyfield.api import load, EarthSatellite, wgs84
-from flask import Flask, Response
-from flask import request, jsonify
+from flask import Flask, Response, send_file
 import random
 import time
 from shared_state import state
+import tkinter as tk
+from simulation_gui import SimulationGUI
 
 start_time = time.time()
 orbit_angular_speeds = []
@@ -241,26 +243,6 @@ def calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, tgt
     distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
     return distance
 
-@app.route("/state")
-def get_state():
-    focus, heading, tilt = state.get_values()
-    return jsonify({
-        "focus_mod": focus,
-        "heading_rate": heading,
-        "tilt_rate": tilt
-    })
-
-@app.route("/set_state", methods=["POST"])
-def set_state():
-    data = request.json
-    state.set_values(
-        focus_mod=data.get("focus_mod"),
-        heading_rate=data.get("heading_rate"),
-        tilt_rate=data.get("tilt_rate")
-    )
-    return jsonify({"status": "ok"})
-
-
 @app.route("/orbit.kml")
 def stream_kml_orbit_only():
     """
@@ -486,6 +468,11 @@ def dynamic_kml():
     else:
         return stream_kml_orbit_only()
 
+def start_simulation_gui():
+    root = tk.Tk()
+    gui = SimulationGUI(root)
+    root.mainloop()
+
 
 def shutdown_handler(sig, frame):
     """
@@ -496,6 +483,9 @@ def shutdown_handler(sig, frame):
 
 
 if __name__ == "__main__":
+    # Start the GUI in a separate thread
+    threading.Thread(target=start_simulation_gui, daemon=True).start()
+
     # Catch SIGINT (Ctrl+C) to exit cleanly
     tle_line1, tle_line2 = fetch_iss_tle()
 
@@ -507,7 +497,7 @@ if __name__ == "__main__":
     print("[Tracker] Flask server on port 5003 …")
     app.run(host="0.0.0.0", port=5003)
 
-    
+
 
 """
     ToDo:
