@@ -12,7 +12,7 @@ class SharedState:
 
     def get_values(self):
         with self.lock:
-            return self.focus_mod, self.heading_rate, self.tilt_rate, 0.0  # Energy use is not implemented, returning 0.0
+            return self.focus_mod, self.heading_rate, self.tilt_rate # Energy use is not implemented, returning 0.0
 
     def set_values(self, focus_mod=None, heading_rate=None, tilt_rate=None, energy_use=None):
         with self.lock:

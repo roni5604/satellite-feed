@@ -35,7 +35,7 @@ class SimulationGUI:
         self.update_gui()
 
     def toggle_focus(self):
-        current_focus, _, _, _ = state.get_values()
+        current_focus, _, _ = state.get_values()
         new_focus = not current_focus
         try:
             requests.post("http://localhost:5003/set_state", json={"focus_mod": new_focus})
@@ -44,14 +44,14 @@ class SimulationGUI:
 
     def update_energy_use(self):
         """Compute instantaneous power draw and store it in shared_state."""
-        focus, h_rate, t_rate, _ = state.get_values()
+        focus, h_rate, t_rate = state.get_values()
 
         P_idle = 5.0                      # idle power consumption in watts
         k_h, k_t = 0.03, 0.04             # the power coefficients for heading and tilt rates
         P_focus = 10.0 if focus else 0.0  # when focus mode is active the satellite consumes more power for calculations
 
         energy = P_idle + k_h * h_rate ** 2 + k_t * t_rate ** 2 + P_focus
-        state.set_values(energy_use=energy)
+        # state.set_values(energy_use=energy)
         return energy
 
     def update_gui(self):

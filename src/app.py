@@ -10,6 +10,7 @@ from skyfield.api import load, EarthSatellite, wgs84
 from flask import Flask, Response, send_file
 import random
 import time
+from flask import request, jsonify
 from shared_state import state
 import tkinter as tk
 from simulation_gui import SimulationGUI
@@ -53,13 +54,6 @@ target_points: list[tuple[float, float]] = []  # (lat,lon) ground pts
 # TLE lines for the ISS (populated once at startup)
 tle_line1 = tle_line2 = None
 
-def update_energy_use():
-    """
-    Updates global energy_use based on current angular speeds.
-    A simple energy model: energy ∝ heading_rate² + tilt_rate²
-    """
-    global energy_use, heading_rate, tilt_rate
-    # energy_use = .................................
 
 def fetch_iss_tle():
     """
@@ -242,6 +236,27 @@ def calculate_3d_distance_km(sat_lat, sat_lon, sat_alt_km, tgt_lat, tgt_lon, tgt
 
     distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
     return distance
+
+
+@app.route("/state")
+def get_state():
+    focus, heading, tilt = state.get_values()
+    return jsonify({
+        "focus_mod": focus,
+        "heading_rate": heading,
+        "tilt_rate": tilt
+    })
+
+@app.route("/set_state", methods=["POST"])
+def set_state():
+    data = request.json
+    state.set_values(
+        focus_mod=data.get("focus_mod"),
+        heading_rate=data.get("heading_rate"),
+        tilt_rate=data.get("tilt_rate")
+    )
+    return jsonify({"status": "ok"})
+
 
 @app.route("/orbit.kml")
 def stream_kml_orbit_only():
