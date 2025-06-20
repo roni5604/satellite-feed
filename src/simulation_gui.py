@@ -41,6 +41,8 @@ class SimulationGUI:
             requests.post("http://localhost:5003/set_state", json={"focus_mod": new_focus})
         except Exception as e:
             print("Failed to update focus_mod on server:", e)
+        self.focus_button.config(text="Stop Focus Simulation" if new_focus else "Start Focus Simulation")
+
 
     def update_energy_use(self):
         """Compute instantaneous power draw and store it in shared_state."""
@@ -64,6 +66,9 @@ class SimulationGUI:
         except Exception as e:
             print("Failed to fetch state:", e)
             focus_mod, heading_rate, tilt_rate = False, 0.0, 0.0
+
+        # Update focus button text
+        self.focus_button.config(text="Stop Focus Simulation" if focus_mod else "Start Focus Simulation")
 
         # Update heading
         self.heading_label.config(text=f"Heading Rate (deg/s): {heading_rate:.2f}")

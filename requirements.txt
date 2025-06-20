@@ -1,6 +1,18 @@
-Flask
-requests
-skyfield
+Flask==3.1.1
+requests==2.32.4
+skyfield==1.53
+jplephem==2.22
+sgp4==2.24
+numpy==2.2.6
+numpy-stl==3.2.0
+PyOpenGL==3.1.9
+PyOpenGL-accelerate==3.1.9
+pyqtgraph==0.13.7
+PySide6==6.9.1
+PySide6-Addons==6.9.1
+PySide6-Essentials==6.9.1
+shiboken6==6.9.1
 
-
-# skyfield is used for astronomical calculations, such as finding the position of the Sun and Moon 
+# python3 -m venv venv
+# source venv/bin/activate
+# pip install -r requirements.txt

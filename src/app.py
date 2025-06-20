@@ -25,12 +25,6 @@ prev_heading = None
 prev_tilt = None
 prev_time = None
 
-# Global variables for GUI
-# focus_mod = False
-# heading_rate = 0.0
-# tilt_rate = 0.0
-# energy_use = 0.0
-
 app = Flask(__name__)
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
