@@ -70,16 +70,12 @@ python satellite_gui.py
 
 ---
 
+
 ## 🎥 Demonstration Video
+The demonstration video file **`final_video.mov`** is located in the project root.  
+To view it, open `final_video.mov` with your preferred media player, or click the link below:
 
-Here you can embed or link to a video that demonstrates:
-
-1. Running `app.py`
-2. Launching `simulation_gui.py` and `satellite_gui.py`
-3. Real-time KML updating in Google Earth Pro
-
-> **Video Placeholder:**
-> *Embed your recording here (e.g. YouTube link or local video).*
+[▶️ Play Demo Video](./final_video.mov)
 
 ---
 
