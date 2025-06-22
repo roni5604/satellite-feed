@@ -75,7 +75,8 @@ python satellite_gui.py
 The demonstration video file **`final_video.mov`** is located in the project root.  
 To view it, open `final_video.mov` with your preferred media player, or click the link below:
 
-[▶️ Play Demo Video](./final_video.mov)
+[▶️ Play Demo Video](https://drive.google.com/file/d/1JhUz0Zecrq9HHuNc67pvaG3HO3MYRr7L/view)
+
 
 ---
 
