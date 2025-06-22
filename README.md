@@ -1,4 +1,3 @@
-````markdown
 # ISS Real-Time Tracker Simulation
 
 ## 📜 Overview
