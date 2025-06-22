@@ -183,6 +183,7 @@ satellite-feed/
 ├─ app.py
 ├─ simulation_gui.py
 ├─ satellite_gui.py
+├─ satellite_gui_2.py
 ├─ shared_state.py
 ├─ requirements.txt
 ├─ static/
