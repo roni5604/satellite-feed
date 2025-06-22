@@ -53,6 +53,7 @@ python app.py
 
 ```bash
 python simulation_gui.py
+python simulation_gui_2.py
 ```
 
 ### 6. Launch the 3D Satellite Viewer
