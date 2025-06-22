@@ -105,7 +105,7 @@ To view it, open `final_video.mov` with your preferred media player, or click th
 
 [▶️ Play Demo Video](https://drive.google.com/file/d/1JhUz0Zecrq9HHuNc67pvaG3HO3MYRr7L/view)
 
-[▶️ Play New Version Demo]((https://drive.google.com/file/d/12TNvrS-UMboLWRBlGWjw_YkyLtWeyes8/view))
+[▶️ Play New Version Demo](https://drive.google.com/file/d/12TNvrS-UMboLWRBlGWjw_YkyLtWeyes8/view)
 
 
 ---
