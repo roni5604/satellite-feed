@@ -196,7 +196,7 @@ satellite-feed/
 
 * **Roni Michaeli** (209233873)
 * **Neta Cohen** (325195774)
-* **Matan Ziv (208235796)
+* **Matan Ziv** (208235796)
 
 ---
 
