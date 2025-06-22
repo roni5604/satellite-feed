@@ -66,8 +66,35 @@ python satellite_gui.py
 
 ### 7. Start KML stream in Google Earth Pro
 
-* Open **dynamic.kml** or point Google Earth Pro to `http://localhost:5003/dynamic.kml`
-* This will show the live ISS view (static or targeting mode).
+1. **Edit** the `networklink.kml` file (it lives in the repo root) so that its `<href>` points at your machine’s LAN IP instead of `localhost`. For example, if your PC’s IP is `10.100.102.26`, change:
+
+   ```xml
+   <NetworkLink>
+     <name>ISS Tracker</name>
+     <refreshMode>onInterval</refreshMode>
+     <refreshInterval>5</refreshInterval>
+     <Link>
+       <href>http://10.100.102.26:5003/dynamic.kml</href>
+     </Link>
+   </NetworkLink>
+   ```
+
+2. **Find your local IP** on the same network (see below).
+
+3. In Google Earth Pro choose **File → Open…**, select this edited `networklink.kml`, and click **Open**. It will then pull your live stream and refresh every 5 seconds.
+
+---
+
+### 🔍 How to discover your machine’s IP address
+
+* **Windows**:
+  Open PowerShell or CMD and run `ipconfig`. Look for the “IPv4 Address” under your active adapter (Ethernet or Wi-Fi).
+
+* **macOS / Linux**:
+  Open Terminal and run `ifconfig` or `ip addr show`. Your IP is listed next to `inet` on the interface you’re using (e.g. `en0`, `wlan0`).
+
+Once you know the IP (e.g. `192.168.1.42`), replace **`10.100.102.26`** above with **your** IP.
+
 
 ---
 
